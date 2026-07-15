@@ -50,10 +50,11 @@ async def get_product(
 async def create_product(
     product_data: ProductCreate,
     db: AsyncSession = Depends(get_db),
+    redis_client: Redis = Depends(get_redis),
     current_user = Depends(get_current_user)
 ):
     try:
-        new_product = await ProductService.create_product(db, product_data)
+        new_product = await ProductService.create_product(redis_client, db, product_data)
         return new_product
     except Exception as e:
         raise HTTPException(
@@ -67,9 +68,10 @@ async def update_product(
     product_id: UUID,
     product_data: ProductUpdate,
     db: AsyncSession = Depends(get_db),
+    redis_client: Redis = Depends(get_redis),
     current_user = Depends(get_current_user)
 ):
-    updated_product = await ProductService.update_product(db, product_id, product_data)
+    updated_product = await ProductService.update_product(redis_client, db, product_id, product_data)
     if not updated_product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -82,9 +84,10 @@ async def update_product(
 async def delete_product(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
+    redis_client: Redis = Depends(get_redis),
     current_user = Depends(get_current_user)
 ):
-    success = await ProductService.delete_product(db, product_id)
+    success = await ProductService.delete_product(redis_client, db, product_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -17,17 +17,17 @@ class ProductService:
         return await ProductRepository.get_by_id(db, product_id)
 
     @staticmethod
-    async def create_product(db: AsyncSession, product_data: ProductCreate) -> Product:
+    async def create_product(redis_client: Redis, db: AsyncSession, product_data: ProductCreate) -> Product:
         new_product = Product(
             name=product_data.name,
             description=product_data.description,
             price=product_data.price,
             images_products=product_data.images_products
         )
-        return await ProductRepository.create(db, new_product)
+        return await ProductRepository.create(redis_client, db, new_product)
 
     @staticmethod
-    async def update_product(db: AsyncSession, product_id: UUID, product_data: ProductUpdate) -> Product | None:
+    async def update_product(redis_client: Redis, db: AsyncSession, product_id: UUID, product_data: ProductUpdate) -> Product | None:
         product = await ProductRepository.get_by_id(db, product_id)
         if not product:
             return None
@@ -37,13 +37,13 @@ class ProductService:
         for key, value in update_data.items():
             setattr(product, key, value)
             
-        return await ProductRepository.update(db, product)
+        return await ProductRepository.update(redis_client, db, product)
 
     @staticmethod
-    async def delete_product(db: AsyncSession, product_id: UUID) -> bool:
+    async def delete_product(redis_client: Redis, db: AsyncSession, product_id: UUID) -> bool:
         product = await ProductRepository.get_by_id(db, product_id)
         if not product:
             return False
             
-        await ProductRepository.delete(db, product)
+        await ProductRepository.delete(redis_client, db, product)
         return True

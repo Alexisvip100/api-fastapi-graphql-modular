@@ -27,9 +27,11 @@ async def create_favorite_list(
     favorite_data: FavoritesCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    redis_client: Redis = Depends(get_redis),
 ):
     try:
         return await FavoriteService.create_favorite_list(
+            redis_client=redis_client,
             db=db,
             user_id=current_user.id,
             favorite_data=favorite_data
@@ -63,7 +65,7 @@ async def get_favorites(
     "/{favorite_id}",
     response_model=FavoritesResponse,
 )
-async def get_favorite_list(
+async def get_favorite_list_by_id(
     favorite_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -89,8 +91,10 @@ async def update_favorite_list(
     favorite_data: FavoriteUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    redis_client: Redis = Depends(get_redis),
 ):
     updated_list = await FavoriteService.update_favorite_list(
+        redis_client=redis_client,
         db=db,
         favorite_id=favorite_id,
         user_id=current_user.id,
@@ -111,8 +115,10 @@ async def delete_favorite_list(
     favorite_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    redis_client: Redis = Depends(get_redis),
 ):
     success = await FavoriteService.delete_favorite_list(
+        redis_client=redis_client,
         db=db,
         favorite_id=favorite_id,
         user_id=current_user.id
@@ -133,9 +139,11 @@ async def add_product_to_favorites(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    redis_client: Redis = Depends(get_redis),
 ):
     try:
         favorite_list = await FavoriteService.add_product_to_favorites(
+            redis_client=redis_client,
             db=db,
             favorite_id=favorite_id,
             user_id=current_user.id,
@@ -167,9 +175,11 @@ async def remove_product_from_favorites(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    redis_client: Redis = Depends(get_redis),
 ):
     try:
         favorite_list = await FavoriteService.remove_product_from_favorites(
+            redis_client=redis_client,
             db=db,
             favorite_id=favorite_id,
             user_id=current_user.id,

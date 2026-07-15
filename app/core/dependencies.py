@@ -1,5 +1,5 @@
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from uuid import UUID
 
 from app.core.config import settings
@@ -41,24 +41,15 @@ async def get_current_user(
 
 
 async def get_current_user_graphql(
-    info,
+    request: Request,
     db: AsyncSession
-) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    request = info.context.get("request")
-    if not request:
-        raise credentials_exception
-        
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise credentials_exception
-        
-    token = auth_header.split(" ")[1]
+) -> User | None:
     try:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return None
+            
+        token = auth_header.split(" ")[1]
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
@@ -66,13 +57,10 @@ async def get_current_user_graphql(
         )
         user_id_str: str = payload.get("sub")
         if user_id_str is None:
-            raise credentials_exception
+            return None
         user_id = UUID(user_id_str)
+        return await UserRepository.get_by_id(db, user_id)
     except (JWTError, ValueError):
-        raise credentials_exception
-        
-    user = await UserRepository.get_by_id(db, user_id)
-    if user is None:
-        raise credentials_exception
-    return user
+        return None
+
 

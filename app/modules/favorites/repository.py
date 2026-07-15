@@ -8,6 +8,16 @@ from app.modules.product.model import Product
 
 class FavoriteRepository:
     @staticmethod
+    async def _clear_user_favorites_cache(redis_client: Redis, user_id: UUID) -> None:
+        try:
+            keys = await redis_client.keys(f"favorites_by_user:all:{user_id}:*")
+            if keys:
+                await redis_client.delete(*keys)
+        except Exception as e:
+            print(f"Error clearing cache for user {user_id}: {e}")
+
+
+    @staticmethod
     async def get_favorites_by_user(redis_client: Redis, db: AsyncSession, user_id: UUID, limit: int, offset: int) -> list[FavoriteList]:
         cache_key_favorites = f"favorites_by_user:all:{user_id}:offset:{offset}:limit:{limit}"
         try:
@@ -75,20 +85,24 @@ class FavoriteRepository:
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
+  
     @staticmethod
-    async def create(db: AsyncSession, favorite_list: FavoriteList) -> FavoriteList:
+    async def create(redis_client: Redis, db: AsyncSession, favorite_list: FavoriteList) -> FavoriteList:
+        await FavoriteRepository._clear_user_favorites_cache(redis_client, favorite_list.user_id)
         db.add(favorite_list)
         await db.commit()
         await db.refresh(favorite_list)
         return favorite_list
 
     @staticmethod
-    async def update(db: AsyncSession, favorite_list: FavoriteList) -> FavoriteList:
+    async def update(redis_client: Redis, db: AsyncSession, favorite_list: FavoriteList) -> FavoriteList:
+        await FavoriteRepository._clear_user_favorites_cache(redis_client, favorite_list.user_id)
         await db.commit()
         await db.refresh(favorite_list)
         return favorite_list
 
     @staticmethod
-    async def delete(db: AsyncSession, favorite_list: FavoriteList) -> None:
+    async def delete(redis_client: Redis, db: AsyncSession, favorite_list: FavoriteList) -> None:
+        await FavoriteRepository._clear_user_favorites_cache(redis_client, favorite_list.user_id)
         await db.delete(favorite_list)
         await db.commit()

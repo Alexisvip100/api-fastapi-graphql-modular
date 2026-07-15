@@ -18,18 +18,18 @@ class FavoriteService:
         return await FavoriteRepository.get_by_id(db, favorite_id, user_id)
 
     @staticmethod
-    async def create_favorite_list(db: AsyncSession, user_id: UUID, favorite_data: FavoritesCreate, product_list: list[Product] | None = None) -> FavoriteList:
+    async def create_favorite_list(redis_client: Redis, db: AsyncSession, user_id: UUID, favorite_data: FavoritesCreate, product_list: list[Product] | None = None) -> FavoriteList:
         new_list = FavoriteList(
             user_id=user_id,
             name=favorite_data.name,
             description=favorite_data.description,
             products=product_list or []
         )
-        return await FavoriteRepository.create(db, new_list)
+        return await FavoriteRepository.create(redis_client, db, new_list)
 
     @staticmethod
     async def update_favorite_list(
-        db: AsyncSession, favorite_id: UUID, user_id: UUID, favorite_data: FavoriteUpdate
+        redis_client: Redis, db: AsyncSession, favorite_id: UUID, user_id: UUID, favorite_data: FavoriteUpdate
     ) -> FavoriteList | None:
         favorite_list = await FavoriteRepository.get_by_id(db, favorite_id, user_id)
         if not favorite_list:
@@ -39,20 +39,20 @@ class FavoriteService:
         for key, value in update_data.items():
             setattr(favorite_list, key, value)
 
-        return await FavoriteRepository.update(db, favorite_list)
+        return await FavoriteRepository.update(redis_client, db, favorite_list)
 
     @staticmethod
-    async def delete_favorite_list(db: AsyncSession, favorite_id: UUID, user_id: UUID) -> bool:
+    async def delete_favorite_list(redis_client: Redis, db: AsyncSession, favorite_id: UUID, user_id: UUID) -> bool:
         favorite_list = await FavoriteRepository.get_by_id(db, favorite_id, user_id)
         if not favorite_list:
             return False
 
-        await FavoriteRepository.delete(db, favorite_list)
+        await FavoriteRepository.delete(redis_client, db, favorite_list)
         return True
 
     @staticmethod
     async def add_product_to_favorites(
-        db: AsyncSession, favorite_id: UUID, user_id: UUID, product_id: UUID
+        redis_client: Redis, db: AsyncSession, favorite_id: UUID, user_id: UUID, product_id: UUID
     ) -> FavoriteList | None:
         # Fetch the favorite list and ensure it belongs to the user
         favorite_list = await FavoriteRepository.get_by_id(db, favorite_id, user_id)
@@ -67,13 +67,13 @@ class FavoriteService:
         # Check if product is already in favorites list to avoid duplicates
         if product not in favorite_list.products:
             favorite_list.products.append(product)
-            await FavoriteRepository.update(db, favorite_list)
+            await FavoriteRepository.update(redis_client, db, favorite_list)
 
         return favorite_list
 
     @staticmethod
     async def remove_product_from_favorites(
-        db: AsyncSession, favorite_id: UUID, user_id: UUID, product_id: UUID
+        redis_client: Redis, db: AsyncSession, favorite_id: UUID, user_id: UUID, product_id: UUID
     ) -> FavoriteList | None:
         favorite_list = await FavoriteRepository.get_by_id(db, favorite_id, user_id)
         if not favorite_list:
@@ -85,6 +85,6 @@ class FavoriteService:
 
         if product in favorite_list.products:
             favorite_list.products.remove(product)
-            await FavoriteRepository.update(db, favorite_list)
+            await FavoriteRepository.update(redis_client, db, favorite_list)
 
         return favorite_list

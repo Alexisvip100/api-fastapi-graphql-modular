@@ -83,19 +83,31 @@ class ProductRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def create(db: AsyncSession, product: Product) -> Product:
+    async def _clear_products_cache(redis_client: Redis) -> None:
+        try:
+            keys = await redis_client.keys("products:all:*")
+            if keys:
+                await redis_client.delete(*keys)
+        except Exception as e:
+            print(f"Error clearing products cache: {e}")
+
+    @staticmethod
+    async def create(redis_client: Redis, db: AsyncSession, product: Product) -> Product:
+        await ProductRepository._clear_products_cache(redis_client)
         db.add(product)
         await db.commit()
         await db.refresh(product)
         return product
 
     @staticmethod
-    async def update(db: AsyncSession, product: Product) -> Product:
+    async def update(redis_client: Redis, db: AsyncSession, product: Product) -> Product:
+        await ProductRepository._clear_products_cache(redis_client)
         await db.commit()
         await db.refresh(product)
         return product
 
     @staticmethod
-    async def delete(db: AsyncSession, product: Product) -> None:
+    async def delete(redis_client: Redis, db: AsyncSession, product: Product) -> None:
+        await ProductRepository._clear_products_cache(redis_client)
         await db.delete(product)
         await db.commit()
